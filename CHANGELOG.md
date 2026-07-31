@@ -4,6 +4,16 @@ All notable changes to this project are documented here.
 
 ---
 
+## 0.3.0 — 2026-07-31
+
+### Breaking Changes
+
+- Horizontal oscillation is now a 0–3 sweep-angle preset, not an on/off toggle. It was modelled as a boolean, which silently discarded presets 2 and 3 — `tune set horosc` accepts 0 (off) through 3, confirmed against the Home Assistant integrations built on the same MQTT protocol. `horizontalOscillationCommand` now takes a number and throws a `RangeError` outside 0–3; it still accepts a boolean for compatibility, mapping `true` to preset 1. `setOscillation`'s value parameter widened to `number | boolean` on both the one-shot client and the session. ([27614f3](https://github.com/kud/duux/commit/27614f34d84ff8879afc62b5b5d1dd3229049d16))
+- `FanState.swing` is now a number rather than a boolean. The fan reports the sweep preset, and flattening it with `=== 1` destroyed any value above 1. Note honestly: only the _command_ range is confirmed — that the fan reports the same 0–3 range back is inferred and still awaits a real state payload to verify. ([27614f3](https://github.com/kud/duux/commit/27614f34d84ff8879afc62b5b5d1dd3229049d16))
+- Vertical oscillation (`verosc`) is deliberately unchanged and remains a boolean — no equivalent confirmation exists for it yet. ([27614f3](https://github.com/kud/duux/commit/27614f34d84ff8879afc62b5b5d1dd3229049d16))
+
+---
+
 ## 0.2.0 — 2026-07-31
 
 ### Breaking Changes
