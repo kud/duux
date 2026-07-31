@@ -7,7 +7,11 @@ type FanState = {
   mode: FanMode | null
   power: boolean | null
   speed: number
-  swing: boolean
+  // The sweep-angle preset, 0 (off) to 3 — reported as the raw number rather
+  // than flattened to a boolean, which discarded presets 2 and 3 entirely.
+  // Only the command range is confirmed; that the fan reports the same range
+  // back is inferred, and awaits a real state payload to verify.
+  swing: number
   tilt: boolean
   timer: number
   sensor: string
@@ -69,7 +73,7 @@ const toFanState = (raw: RawFanData): FanState => ({
   mode: raw.mode != null ? (FAN_MODE_BY_VALUE[raw.mode] ?? null) : null,
   power: raw.power != null ? raw.power === 1 : null,
   speed: raw.speed,
-  swing: raw.swing === 1,
+  swing: raw.swing,
   tilt: raw.tilt === 1,
   timer: raw.timer,
   sensor: raw.sensor,

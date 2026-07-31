@@ -39,13 +39,13 @@ const setMode = (mode: FanMode, transport?: Transport): Promise<void> =>
 
 const setOscillation = (
   axis: "horizontal" | "vertical",
-  on: boolean,
+  on: number | boolean,
   transport?: Transport,
 ): Promise<void> =>
   sendCommand(
     axis === "horizontal"
       ? horizontalOscillationCommand(on)
-      : verticalOscillationCommand(on),
+      : verticalOscillationCommand(Boolean(on)),
     transport,
   )
 

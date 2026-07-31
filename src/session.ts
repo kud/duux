@@ -21,7 +21,10 @@ interface Session extends EventEmitter {
   setPower(on: boolean): Promise<void>
   setSpeed(speed: number): Promise<void>
   setMode(mode: FanMode): Promise<void>
-  setOscillation(axis: "horizontal" | "vertical", on: boolean): Promise<void>
+  setOscillation(
+    axis: "horizontal" | "vertical",
+    on: number | boolean,
+  ): Promise<void>
   setNightMode(on: boolean): Promise<void>
   setTimer(hours: number): Promise<void>
   refresh(): Promise<void>
@@ -120,14 +123,14 @@ const createSession = (options: CreateSessionOptions = {}): Session => {
     withDevice((t, d) => t.sendCommand(d.id, modeCommand(mode)))
   const setOscillation = (
     axis: "horizontal" | "vertical",
-    on: boolean,
+    on: number | boolean,
   ): Promise<void> =>
     withDevice((t, d) =>
       t.sendCommand(
         d.id,
         axis === "horizontal"
           ? horizontalOscillationCommand(on)
-          : verticalOscillationCommand(on),
+          : verticalOscillationCommand(Boolean(on)),
       ),
     )
   const setNightMode = (on: boolean): Promise<void> =>

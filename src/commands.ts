@@ -9,7 +9,11 @@ type Command =
   | { param: "power"; value: boolean }
   | { param: "speed"; value: number }
   | { param: "mode"; value: FanMode }
-  | { param: "horosc"; value: boolean }
+  // horosc is a four-position sweep-angle preset, not a toggle — confirmed
+  // against the Home Assistant integrations built on this same protocol,
+  // which document "tune set horosc X (X: 0-3)". verosc has no equivalent
+  // confirmation and stays a toggle until one exists.
+  | { param: "horosc"; value: number }
   | { param: "verosc"; value: boolean }
   | { param: "night"; value: boolean }
   | { param: "timer"; value: number }
@@ -33,7 +37,15 @@ const buildCommand = (command: Command): string => {
     case "mode":
       return `tune set mode ${FAN_MODE_VALUES[command.value]}`
     case "horosc":
-      return `tune set horosc ${asBit(command.value)}`
+      if (
+        !Number.isInteger(command.value) ||
+        command.value < 0 ||
+        command.value > 3
+      )
+        throw new RangeError(
+          `horizontal oscillation must be an integer between 0 (off) and 3, got ${command.value}`,
+        )
+      return `tune set horosc ${command.value}`
     case "verosc":
       return `tune set verosc ${asBit(command.value)}`
     case "night":
@@ -53,8 +65,13 @@ const speedCommand = (speed: number): string =>
   buildCommand({ param: "speed", value: speed })
 const modeCommand = (mode: FanMode): string =>
   buildCommand({ param: "mode", value: mode })
-const horizontalOscillationCommand = (on: boolean): string =>
-  buildCommand({ param: "horosc", value: on })
+// Accepts a boolean so existing callers keep working: true maps to preset 1,
+// the narrowest sweep, which is what "on" used to mean.
+const horizontalOscillationCommand = (level: number | boolean): string =>
+  buildCommand({
+    param: "horosc",
+    value: typeof level === "boolean" ? (level ? 1 : 0) : level,
+  })
 const verticalOscillationCommand = (on: boolean): string =>
   buildCommand({ param: "verosc", value: on })
 const nightModeCommand = (on: boolean): string =>
