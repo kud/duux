@@ -53,8 +53,13 @@ export type { MqttTransportOptions } from "./transport/mqtt.js"
 export type { Transport } from "./transport/index.js"
 
 // Discovery
-export { discover, fetchCurrentUser, resolveTenantId } from "./discovery.js"
-export type { Discovered, CurrentUser, TenantSummary } from "./discovery.js"
+export {
+  discover,
+  fetchCurrentUser,
+  fetchSensors,
+  unwrap,
+} from "./discovery.js"
+export type { Discovered, CurrentUser, TenantPermission } from "./discovery.js"
 
 // One-shot commands
 export {
@@ -73,7 +78,12 @@ export { createSession } from "./session.js"
 export type { Session, CreateSessionOptions } from "./session.js"
 
 // Domain types
-export { toFanState, FAN_MODE_VALUES, FAN_MODE_BY_VALUE } from "./types.js"
+export {
+  toFanState,
+  sensorLabel,
+  FAN_MODE_VALUES,
+  FAN_MODE_BY_VALUE,
+} from "./types.js"
 export type {
   FanMode,
   FanState,

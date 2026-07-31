@@ -26,11 +26,19 @@ type RawFanData = {
   sensor: string
 }
 
+// displayName is null until the owner renames the fan in the Duux app, so it
+// can never be the only label — `name` (the factory identifier, e.g.
+// "DUUX.1.356505") is always present. Use sensorLabel rather than reading
+// displayName directly.
 type SensorSummary = {
   id: number
   type: string
-  displayName: string
+  name: string
+  displayName: string | null
 }
+
+const sensorLabel = (sensor: SensorSummary): string =>
+  sensor.displayName?.trim() || sensor.name
 
 type FanSessionState = {
   deviceId: number | null
@@ -67,7 +75,7 @@ const toFanState = (raw: RawFanData): FanState => ({
   sensor: raw.sensor,
 })
 
-export { toFanState, FAN_MODE_VALUES, FAN_MODE_BY_VALUE }
+export { toFanState, sensorLabel, FAN_MODE_VALUES, FAN_MODE_BY_VALUE }
 export type {
   FanMode,
   FanState,

@@ -3,7 +3,6 @@ import type { Transport } from "./transport/index.js"
 import {
   getAccessToken,
   requireCurrentDevice,
-  requireTenantId,
 } from "./context.js"
 import {
   powerCommand,
@@ -17,7 +16,7 @@ import {
 import type { FanMode, FanState } from "./types.js"
 
 const defaultTransport = (): Transport =>
-  createCloudTransport({ getAccessToken, tenantId: requireTenantId() })
+  createCloudTransport({ getAccessToken })
 
 const resolveTransport = (transport?: Transport): Transport =>
   transport ?? defaultTransport()

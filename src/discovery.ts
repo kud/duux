@@ -1,77 +1,82 @@
 import type { SensorSummary } from "./types.js"
 
-const V4_BASE_URL = "https://v4.api.cloudgarden.nl"
+const V5_BASE_URL = "https://v5.api.cloudgarden.nl"
 
-// Cloudgarden's tenant 44 is Duux's own house tenant and shows up on every
-// account alongside the tenant that actually owns the user's devices — the
-// Go reference client (ThisIsNoahEvans/DuuxAPI) confirms this by always
-// skipping id 44 when picking a tenant to query. We do the same.
-const DUUX_HOUSE_TENANT_ID = 44
-
-type TenantSummary = {
-  id: number
-  name: string
+// Cloudgarden's v4 tenant-scoped paths are retired in practice: /users/current
+// no longer carries a `tenants` array at all, /tenants lists nothing (it
+// reports a totalCount but an empty page), and /tenants/{id}/sensors answers
+// 403 for every tenant the account holds — including the one it owns. v5 is
+// flat, so discovery no longer resolves or needs a tenant. The account's
+// tenant memberships still exist, at /users/current under `permissions`, but
+// nothing in this library requires them any more.
+type TenantPermission = {
+  tenantId: number
+  role: number
 }
 
 type CurrentUser = {
-  id: number
+  id: string
   username: string
+  displayName: string
   email: string
-  tenants: TenantSummary[]
+  permissions: TenantPermission[]
 }
 
 type Discovered = {
-  tenantId: number
   devices: SensorSummary[]
 }
 
-const fetchCurrentUser = async (accessToken: string): Promise<CurrentUser> => {
-  const response = await fetch(`${V4_BASE_URL}/users/current`, {
+// v5 is inconsistent about envelopes: /users/current and /data/{id}/status
+// wrap their payload as { data, errorMessage }, while /sensor answers with a
+// bare array. Worse, a refusal arrives as HTTP 200 with the reason in
+// errorMessage — so checking response.ok alone turns "Not_Allowed" into a
+// silent null. Unwrap both shapes and treat a populated errorMessage as the
+// failure it is.
+const unwrap = <T>(body: unknown, path: string): T => {
+  if (
+    body !== null &&
+    typeof body === "object" &&
+    !Array.isArray(body) &&
+    ("data" in body || "errorMessage" in body)
+  ) {
+    const envelope = body as { data: T | null; errorMessage: string | null }
+    if (envelope.errorMessage) {
+      throw new Error(
+        `Duux API refused ${path}: ${envelope.errorMessage}. The account may not have permission for this device.`,
+      )
+    }
+    if (envelope.data === null) {
+      throw new Error(`Duux API returned no data for ${path}`)
+    }
+    return envelope.data
+  }
+  return body as T
+}
+
+const v5Get = async <T>(accessToken: string, path: string): Promise<T> => {
+  const response = await fetch(`${V5_BASE_URL}${path}`, {
     headers: { Authorization: `Bearer ${accessToken}` },
   })
   if (!response.ok) {
     throw new Error(
-      `Failed to fetch the current Duux user: ${response.status} ${response.statusText}`,
+      `Duux API request to ${path} failed: ${response.status} ${response.statusText}`,
     )
   }
-  const body = (await response.json()) as { user: CurrentUser }
-  return body.user
+  return unwrap<T>(await response.json(), path)
 }
 
-const resolveTenantId = (user: CurrentUser): number => {
-  const owned = user.tenants.find(
-    (tenant) => tenant.id !== DUUX_HOUSE_TENANT_ID,
-  )
-  const tenantId = owned?.id ?? user.tenants[0]?.id
-  if (tenantId == null) throw new Error("Duux account has no tenants")
-  return tenantId
-}
+const fetchCurrentUser = (accessToken: string): Promise<CurrentUser> =>
+  v5Get<CurrentUser>(accessToken, "/users/current")
 
-const fetchSensors = async (
-  accessToken: string,
-  tenantId: number,
-): Promise<SensorSummary[]> => {
-  const response = await fetch(`${V4_BASE_URL}/tenants/${tenantId}/sensors`, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  })
-  if (!response.ok) {
-    throw new Error(
-      `Failed to fetch Duux sensors: ${response.status} ${response.statusText}`,
-    )
-  }
-  return (await response.json()) as SensorSummary[]
-}
+const fetchSensors = (accessToken: string): Promise<SensorSummary[]> =>
+  v5Get<SensorSummary[]>(accessToken, "/sensor")
 
-// Resolves the account's tenant and its fan list. Pure — it does not touch
-// config.ts. Persisting the result (writeTenantId, upsertDevice) is left to
-// the caller, the same split gtv draws between its (pure) discovery.ts and
-// its (persisting) pairing.ts.
-const discover = async (accessToken: string): Promise<Discovered> => {
-  const user = await fetchCurrentUser(accessToken)
-  const tenantId = resolveTenantId(user)
-  const devices = await fetchSensors(accessToken, tenantId)
-  return { tenantId, devices }
-}
+// Lists the fans on the account. Pure — it does not touch config.ts.
+// Persisting the result (upsertDevice) is left to the caller, the same split
+// gtv draws between its (pure) discovery.ts and its (persisting) pairing.ts.
+const discover = async (accessToken: string): Promise<Discovered> => ({
+  devices: await fetchSensors(accessToken),
+})
 
-export { discover, fetchCurrentUser, resolveTenantId }
-export type { Discovered, CurrentUser, TenantSummary }
+export { discover, fetchCurrentUser, fetchSensors, unwrap, V5_BASE_URL }
+export type { Discovered, CurrentUser, TenantPermission }

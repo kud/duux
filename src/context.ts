@@ -1,15 +1,10 @@
 // Shared "resolve what we're talking to" helpers for client.ts and
-// session.ts — both need the same current-device / tenant / access-token
-// resolution with the same friendly errors, so it lives once, here, rather
-// than being duplicated across the two consumers. Not part of the public
-// API — see index.ts.
+// session.ts — both need the same current-device / access-token resolution
+// with the same friendly errors, so it lives once, here, rather than being
+// duplicated across the two consumers. Not part of the public API — see
+// index.ts.
 
-import {
-  getCurrentDevice,
-  readTenantId,
-  readAuthMeta,
-  type Device,
-} from "./config.js"
+import { getCurrentDevice, readAuthMeta, type Device } from "./config.js"
 import { readToken } from "./keychain.js"
 
 const getAccessToken = (): string => {
@@ -41,11 +36,4 @@ const requireCurrentDevice = (): Device => {
   return device
 }
 
-const requireTenantId = (): number => {
-  const tenantId = readTenantId()
-  if (tenantId == null)
-    throw new Error("No Duux tenant configured. Run discovery first.")
-  return tenantId
-}
-
-export { getAccessToken, requireCurrentDevice, requireTenantId }
+export { getAccessToken, requireCurrentDevice }

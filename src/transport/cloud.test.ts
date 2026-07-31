@@ -23,6 +23,7 @@ describe("createCloudTransport (v4)", () => {
     const transport = createCloudTransport({
       getAccessToken: () => "token-123",
       tenantId: 77,
+      apiVersion: "v4",
     })
 
     await transport.sendCommand(42, "tune set speed 10")
@@ -41,7 +42,10 @@ describe("createCloudTransport (v4)", () => {
   })
 
   it("throws when tenantId is missing", async () => {
-    const transport = createCloudTransport({ getAccessToken: () => "token" })
+    const transport = createCloudTransport({
+      getAccessToken: () => "token",
+      apiVersion: "v4",
+    })
 
     await expect(transport.sendCommand(42, "tune set power 1")).rejects.toThrow(
       /tenantId is required/,
@@ -68,6 +72,7 @@ describe("createCloudTransport (v4)", () => {
     const transport = createCloudTransport({
       getAccessToken: () => "token-123",
       tenantId: 77,
+      apiVersion: "v4",
     })
 
     await expect(transport.getStatus(42)).resolves.toEqual({
@@ -87,6 +92,7 @@ describe("createCloudTransport (v4)", () => {
     const transport = createCloudTransport({
       getAccessToken: () => "token",
       tenantId: 77,
+      apiVersion: "v4",
     })
 
     await expect(transport.sendCommand(42, "tune set power 1")).rejects.toThrow(

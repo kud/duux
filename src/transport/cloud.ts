@@ -1,4 +1,5 @@
 import type { Transport } from "./index.js"
+import { unwrap } from "../discovery.js"
 import {
   toFanState,
   type ApiVersion,
@@ -17,12 +18,13 @@ type CloudTransportOptions = {
 }
 
 // v4 and v5 differ in path shape but not in the command grammar or the
-// eventual fan-state fields — see the API spec's "Hosts" table. Which one
-// the Flex 2 actually answers on is unconfirmed (an open question), so both
-// are implemented and selectable via apiVersion; v4 is the default because
-// it is the only one confirmed to expose discovery (tenants/sensors).
+// eventual fan-state fields — see the API spec's "Hosts" table. v5 is the
+// default: v4's tenant-scoped paths answer 403 on a real account, and its
+// discovery endpoint no longer returns the tenants it needs. v4 is retained
+// because the command grammar is identical and older accounts may still
+// answer on it, but nothing reaches for it unprompted any more.
 const createCloudTransport = (options: CloudTransportOptions): Transport => {
-  const apiVersion = options.apiVersion ?? "v4"
+  const apiVersion = options.apiVersion ?? "v5"
   const baseUrl =
     options.baseUrl ?? (apiVersion === "v4" ? V4_BASE_URL : V5_BASE_URL)
 
@@ -69,20 +71,26 @@ const createCloudTransport = (options: CloudTransportOptions): Transport => {
     deviceId: number,
     command: string,
   ): Promise<void> => {
-    await authorizedFetch(commandPath(deviceId), {
+    const path = commandPath(deviceId)
+    const response = await authorizedFetch(path, {
       method: "POST",
       body: JSON.stringify({ command }),
     })
+    // A refused command comes back as HTTP 200 with the reason in the body,
+    // so the response must be read even though nothing needs its value —
+    // otherwise every rejection reads as a successful send.
+    unwrap<unknown>(await response.json().catch(() => null), path)
   }
 
   const getStatus = async (deviceId: number): Promise<FanState> => {
-    const response = await authorizedFetch(statusPath(deviceId))
+    const path = statusPath(deviceId)
+    const response = await authorizedFetch(path)
     const body = (await response.json()) as unknown
 
     const raw =
       apiVersion === "v4"
         ? (body as { latestData: { fullData: RawFanData } }).latestData.fullData
-        : (body as { data: RawFanData }).data
+        : unwrap<RawFanData>(body, path)
 
     return toFanState(raw)
   }

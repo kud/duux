@@ -2,7 +2,7 @@ import { EventEmitter } from "node:events"
 import { createCloudTransport } from "./transport/cloud.js"
 import type { Transport } from "./transport/index.js"
 import { getCurrentDevice, type Device } from "./config.js"
-import { getAccessToken, requireTenantId } from "./context.js"
+import { getAccessToken } from "./context.js"
 import {
   powerCommand,
   speedCommand,
@@ -84,7 +84,7 @@ const createSession = (options: CreateSessionOptions = {}): Session => {
     try {
       transport =
         options.transport ??
-        createCloudTransport({ getAccessToken, tenantId: requireTenantId() })
+        createCloudTransport({ getAccessToken })
     } catch (error) {
       update({ error: error instanceof Error ? error.message : String(error) })
     }
