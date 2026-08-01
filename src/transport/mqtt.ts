@@ -1,11 +1,13 @@
-// PARTIALLY VERIFIED. The TLS handshake against Cloudgarden's broker is
-// confirmed working with the pinned certificate below; the CONNECT is then
-// refused with "Bad username or password", and the credentials the Duux app
-// uses are not obtainable from the REST API — every plausible pairing of
-// token, user id and email is rejected, and no credentials endpoint exists.
-// Until those are captured from the app's own traffic, supply them yourself
-// via username/password. The command grammar and topics are the same
-// "tune set …" strings the cloud API takes.
+// For a LOCAL broker. The cloud transport is the default and works against
+// Duux's own API, so this exists for running without the cloud at all: point
+// collector3.cloudgarden.nl at your own broker by DNS and the fan connects
+// there instead, publishing to sensor/{mac}/in and accepting the same
+// "tune set …" commands.
+//
+// Connecting to Cloudgarden's *own* broker is not possible: the TLS handshake
+// succeeds with the pinned certificate below, but the CONNECT is refused with
+// "Bad username or password", and no credentials the REST API exposes are
+// accepted. Supply your own via username/password if your broker needs them.
 
 import mqtt, { type MqttClient } from "mqtt"
 import type { Transport } from "./index.js"
@@ -13,6 +15,7 @@ import { toFanState, type FanState, type RawFanData } from "../types.js"
 
 const DEFAULT_HOST = "collector3.cloudgarden.nl"
 const DEFAULT_PORT = 443
+const DEFAULT_STATUS_TIMEOUT_MS = 10_000
 
 // Cloudgarden serves this broker with a self-signed certificate whose SAN
 // list is "localhost", an empty DNS entry and two private IPs — its own
@@ -57,6 +60,10 @@ type MqttTransportOptions = {
   // unset, the pinned Cloudgarden certificate above is used.
   ca?: string | Buffer
   rejectUnauthorized?: boolean
+  // How long a one-shot getStatus waits for the fan to publish before giving
+  // up. The fan pushes on its own schedule, so this is a deadline, not a
+  // request timeout.
+  statusTimeoutMs?: number
 }
 
 const topic = (
@@ -66,6 +73,7 @@ const topic = (
 
 const createMqttTransport = (options: MqttTransportOptions = {}): Transport => {
   const usesDefaultHost = (options.host ?? DEFAULT_HOST) === DEFAULT_HOST
+  const statusTimeoutMs = options.statusTimeoutMs ?? DEFAULT_STATUS_TIMEOUT_MS
 
   const client: MqttClient = mqtt.connect({
     host: options.host ?? DEFAULT_HOST,
@@ -103,21 +111,40 @@ const createMqttTransport = (options: MqttTransportOptions = {}): Transport => {
     })
 
   // The device publishes state on sensor/{id}/in rather than answering a
-  // request/response call, so a one-shot getStatus waits for the next
-  // publish — there is no pull endpoint on this transport.
+  // request/response call, so a one-shot getStatus waits for the next publish
+  // — there is no pull endpoint on this transport. It therefore needs a
+  // deadline: without one, a broker the fan has never connected to leaves the
+  // caller hanging indefinitely with no output at all.
   const getStatus = (deviceId: string): Promise<FanState> =>
     new Promise((resolve, reject) => {
       const stateTopic = topic(deviceId, "in")
 
+      const settle = (fn: () => void) => {
+        clearTimeout(timer)
+        client.removeListener("message", handler)
+        fn()
+      }
+
       const handler = (receivedTopic: string, payload: Buffer): void => {
         if (receivedTopic !== stateTopic) return
-        client.removeListener("message", handler)
-        try {
-          resolve(toFanState(JSON.parse(payload.toString()) as RawFanData))
-        } catch (error) {
-          reject(error instanceof Error ? error : new Error(String(error)))
-        }
+        settle(() => {
+          try {
+            resolve(toFanState(JSON.parse(payload.toString()) as RawFanData))
+          } catch (error) {
+            reject(error instanceof Error ? error : new Error(String(error)))
+          }
+        })
       }
+
+      const timer = setTimeout(() => {
+        settle(() =>
+          reject(
+            new Error(
+              `No state published on ${stateTopic} within ${statusTimeoutMs}ms. The fan may not be connected to this broker.`,
+            ),
+          ),
+        )
+      }, statusTimeoutMs)
 
       client.on("message", handler)
       ensureSubscribed(deviceId)

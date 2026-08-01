@@ -4,6 +4,22 @@ All notable changes to this project are documented here.
 
 ---
 
+## 0.4.0 — 2026-08-01
+
+### Breaking Changes
+
+- Cloud control now works. Reading state and sending commands previously failed with `Not_Allowed`, which read as a permissions problem and was in fact three wrong endpoints: commands are addressed by the device's MAC address, not its numeric sensor id; there is no `/data/{id}/status` endpoint for state; and state instead rides along on the device list at `/smarthome/sensors` as `latestData.fullData`. Discovery moved to that same endpoint, so one call now returns devices and their state together. Verified against a real Duux Whisper Flex 2. ([0a7f1ac](https://github.com/kud/duux/commit/0a7f1acf3df76efe934f96b5d23a889ada2f2b0b))
+- `Transport` methods take the MAC as a string, not a numeric id. `Device` gained an optional `mac` field; devices saved before it existed throw a clear "run discovery again" error rather than a misleading permissions failure. ([0a7f1ac](https://github.com/kud/duux/commit/0a7f1acf3df76efe934f96b5d23a889ada2f2b0b))
+- `FanState` now uses the fan's own field names — `horosc`, `verosc`, `night` — instead of the invented `swing`/`tilt` aliases, and everything is nullable because the fan reports null for anything it lacks. ([0a7f1ac](https://github.com/kud/duux/commit/0a7f1acf3df76efe934f96b5d23a889ada2f2b0b))
+- Night mode is readable after all. The library documented it as write-only; the state payload carries `night`, so `FanState.night` now reports it. ([0a7f1ac](https://github.com/kud/duux/commit/0a7f1acf3df76efe934f96b5d23a889ada2f2b0b))
+- Vertical oscillation is a 0–2 preset (off / 45° / 100°), not a boolean, matching horizontal's 0–3. `verticalOscillationCommand` validates the range and still accepts a boolean for compatibility, mapping `true` to preset 1. ([0a7f1ac](https://github.com/kud/duux/commit/0a7f1acf3df76efe934f96b5d23a889ada2f2b0b))
+
+### Fixes
+
+- MQTT `getStatus` no longer hangs forever. It waits for the fan to publish, so pointed at a broker the fan has never connected to it blocked indefinitely with no output at all. It now fails after a deadline (10s default, configurable via `statusTimeoutMs`) naming the topic it was waiting on. ([0a7f1ac](https://github.com/kud/duux/commit/0a7f1acf3df76efe934f96b5d23a889ada2f2b0b))
+
+---
+
 ## 0.3.0 — 2026-07-31
 
 ### Breaking Changes
