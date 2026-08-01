@@ -12,6 +12,7 @@ import {
   horizontalOscillationCommand,
   verticalOscillationCommand,
   nightModeCommand,
+  childLockCommand,
   timerCommand,
 } from "./commands.js"
 import type { FanMode, FanState } from "./types.js"

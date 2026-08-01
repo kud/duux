@@ -1,4 +1,7 @@
-type FanMode = "normal" | "natural" | "night"
+// Only two, matching the Duux app's own control: Normal and Natural Wind.
+// Night mode is not a mode — it is an independent toggle reported alongside
+// this one, and the fan reports both at once.
+type FanMode = "normal" | "natural"
 
 // The device state, from latestData.fullData on /smarthome/sensors. The field
 // names are the command names verbatim — horosc, verosc, night — not the
@@ -14,6 +17,8 @@ type FanState = {
   horosc: number | null
   verosc: number | null
   night: boolean | null
+  // Child lock, the app's "Child lock" toggle.
+  lock: boolean | null
   timer: number | null
   sensor: string
 }
@@ -28,6 +33,7 @@ type RawFanData = {
   horosc: number | null
   verosc: number | null
   night: number | null
+  lock: number | null
   timer: number | null
   sensor: string
 }
@@ -59,20 +65,18 @@ type FanSessionState = {
 
 type ApiVersion = "v4" | "v5"
 
-// Enumerated empirically from the Go reference client's UI labels (normal /
-// natural / night) — the API itself only ever returns/accepts the bare int.
-// See the API spec's open questions: this is the full enumeration found so
-// far, not a value confirmed exhaustive against real firmware.
+// Two values, matching the Duux app, which offers exactly "Normal" and
+// "Natural Wind". An earlier guess added a third, "night", taken from a
+// reference client's labels — but night mode is its own toggle, reported
+// independently of mode, and 2 is not a value the mode field takes.
 const FAN_MODE_VALUES: Record<FanMode, number> = {
   normal: 0,
   natural: 1,
-  night: 2,
 }
 
 const FAN_MODE_BY_VALUE: Record<number, FanMode> = {
   0: "normal",
   1: "natural",
-  2: "night",
 }
 
 const toFanState = (raw: RawFanData): FanState => ({
@@ -82,6 +86,7 @@ const toFanState = (raw: RawFanData): FanState => ({
   horosc: raw.horosc,
   verosc: raw.verosc,
   night: raw.night != null ? raw.night === 1 : null,
+  lock: raw.lock != null ? raw.lock === 1 : null,
   timer: raw.timer,
   sensor: raw.sensor,
 })

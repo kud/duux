@@ -17,6 +17,7 @@ type Command =
   | { param: "horosc"; value: number }
   | { param: "verosc"; value: number }
   | { param: "night"; value: boolean }
+  | { param: "lock"; value: boolean }
   | { param: "timer"; value: number }
 
 const asBit = (value: boolean): 0 | 1 => (value ? 1 : 0)
@@ -59,6 +60,8 @@ const buildCommand = (command: Command): string => {
       return `tune set verosc ${command.value}`
     case "night":
       return `tune set night ${asBit(command.value)}`
+    case "lock":
+      return `tune set lock ${asBit(command.value)}`
     case "timer":
       if (!Number.isInteger(command.value) || command.value < 0)
         throw new RangeError(
@@ -89,6 +92,8 @@ const verticalOscillationCommand = (level: number | boolean): string =>
   })
 const nightModeCommand = (on: boolean): string =>
   buildCommand({ param: "night", value: on })
+const childLockCommand = (on: boolean): string =>
+  buildCommand({ param: "lock", value: on })
 const timerCommand = (hours: number): string =>
   buildCommand({ param: "timer", value: hours })
 
@@ -100,6 +105,7 @@ export {
   horizontalOscillationCommand,
   verticalOscillationCommand,
   nightModeCommand,
+  childLockCommand,
   timerCommand,
 }
 export type { Command }

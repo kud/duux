@@ -38,7 +38,6 @@ describe("modeCommand", () => {
   it("maps named modes to their wire ints", () => {
     expect(modeCommand("normal")).toBe("tune set mode 0")
     expect(modeCommand("natural")).toBe("tune set mode 1")
-    expect(modeCommand("night")).toBe("tune set mode 2")
   })
 })
 

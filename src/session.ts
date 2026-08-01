@@ -10,6 +10,7 @@ import {
   horizontalOscillationCommand,
   verticalOscillationCommand,
   nightModeCommand,
+  childLockCommand,
   timerCommand,
 } from "./commands.js"
 import type { FanMode, FanSessionState } from "./types.js"
@@ -26,6 +27,7 @@ interface Session extends EventEmitter {
     on: number | boolean,
   ): Promise<void>
   setNightMode(on: boolean): Promise<void>
+  setChildLock(on: boolean): Promise<void>
   setTimer(hours: number): Promise<void>
   refresh(): Promise<void>
   stop(): void
@@ -85,9 +87,7 @@ const createSession = (options: CreateSessionOptions = {}): Session => {
     update({ deviceId: device.id })
 
     try {
-      transport =
-        options.transport ??
-        createCloudTransport({ getAccessToken })
+      transport = options.transport ?? createCloudTransport({ getAccessToken })
     } catch (error) {
       update({ error: error instanceof Error ? error.message : String(error) })
     }
@@ -106,13 +106,25 @@ const createSession = (options: CreateSessionOptions = {}): Session => {
     }
   }
 
+  // The fan takes a moment to apply a command and the cloud a moment more to
+  // report it, so a read straight after a write still returns the old value.
+  // Re-reading after this delay is what turns a caller's optimistic value into
+  // a confirmed one instead of leaving it pending until the next poll.
+  const CONFIRM_DELAY_MS = 1_500
+
   const withDevice = (
     fn: (t: Transport, d: Device) => Promise<void>,
   ): Promise<void> => {
     if (!device || !transport) return Promise.resolve()
-    return fn(transport, device).catch((error: unknown) => {
-      update({ error: error instanceof Error ? error.message : String(error) })
-    })
+    return fn(transport, device)
+      .then(() => {
+        setTimeout(() => void refresh(), CONFIRM_DELAY_MS)
+      })
+      .catch((error: unknown) => {
+        update({
+          error: error instanceof Error ? error.message : String(error),
+        })
+      })
   }
 
   const setPower = (on: boolean): Promise<void> =>
@@ -135,6 +147,8 @@ const createSession = (options: CreateSessionOptions = {}): Session => {
     )
   const setNightMode = (on: boolean): Promise<void> =>
     withDevice((t, d) => t.sendCommand(deviceAddress(d), nightModeCommand(on)))
+  const setChildLock = (on: boolean): Promise<void> =>
+    withDevice((t, d) => t.sendCommand(deviceAddress(d), childLockCommand(on)))
   const setTimer = (hours: number): Promise<void> =>
     withDevice((t, d) => t.sendCommand(deviceAddress(d), timerCommand(hours)))
 
@@ -150,6 +164,7 @@ const createSession = (options: CreateSessionOptions = {}): Session => {
     setMode,
     setOscillation,
     setNightMode,
+    setChildLock,
     setTimer,
     refresh,
     stop,

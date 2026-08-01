@@ -37,6 +37,7 @@ export {
   horizontalOscillationCommand,
   verticalOscillationCommand,
   nightModeCommand,
+  childLockCommand,
   timerCommand,
 } from "./commands.js"
 export type { Command } from "./commands.js"

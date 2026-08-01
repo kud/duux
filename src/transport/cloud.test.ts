@@ -106,6 +106,7 @@ describe("createCloudTransport (v5)", () => {
                 horosc: 1,
                 verosc: 0,
                 night: 1,
+                lock: 0,
                 timer: 0,
                 sensor: MAC,
               },
@@ -128,6 +129,7 @@ describe("createCloudTransport (v5)", () => {
       horosc: 1,
       verosc: 0,
       night: true,
+      lock: false,
       timer: 0,
       sensor: MAC,
     })
