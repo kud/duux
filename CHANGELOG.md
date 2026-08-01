@@ -4,6 +4,24 @@ All notable changes to this project are documented here.
 
 ---
 
+## 0.5.0 — 2026-08-01
+
+### Breaking changes
+
+- **Night mode is not a fan mode.** `FanMode` was `normal | natural | night`, taken from a reference client's UI labels. The Duux app offers exactly two — Normal and Natural Wind — and the fan reports `mode` and `night` as independent fields at the same time. `FanMode` is now `normal | natural`.
+- **Vertical oscillation is a 0–2 preset** (off / 45° / 100°), matching horizontal's 0–3. It was a boolean, which made two of its three positions unreachable.
+
+### Highlights
+
+- **Child lock is now supported** — `FanState.lock`, `childLockCommand` and `session.setChildLock`. The fan reports it and the app exposes it; the library ignored it.
+- **A session re-reads state shortly after every command.** The fan takes a moment to apply a change and the cloud a moment more to report it, so a caller's optimistic value previously stayed unconfirmed until the next 30-second poll.
+
+### Fixes
+
+- **MQTT `getStatus` no longer waits forever.** Pointed at a broker the fan has never connected to, it blocked indefinitely with no output; it now fails after a deadline (10s, configurable via `statusTimeoutMs`) naming the topic it waited on.
+
+---
+
 ## 0.4.0 — 2026-08-01
 
 ### Breaking Changes
