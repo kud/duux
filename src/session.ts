@@ -2,7 +2,7 @@ import { EventEmitter } from "node:events"
 import { createCloudTransport } from "./transport/cloud.js"
 import type { Transport } from "./transport/index.js"
 import { getCurrentDevice, type Device } from "./config.js"
-import { getAccessToken } from "./context.js"
+import { getAccessToken, deviceAddress } from "./context.js"
 import {
   powerCommand,
   speedCommand,
@@ -67,7 +67,7 @@ const createSession = (options: CreateSessionOptions = {}): Session => {
   const refresh = async (): Promise<void> => {
     if (!device || !transport) return
     try {
-      const fan = await transport.getStatus(device.id)
+      const fan = await transport.getStatus(deviceAddress(device))
       update({ connected: true, fan, error: null })
     } catch (error) {
       update({
@@ -93,7 +93,7 @@ const createSession = (options: CreateSessionOptions = {}): Session => {
     }
 
     if (transport?.subscribe) {
-      unsubscribe = transport.subscribe(device.id, (fan) =>
+      unsubscribe = transport.subscribe(deviceAddress(device), (fan) =>
         update({ connected: true, fan, error: null }),
       )
       update({ connected: true })
@@ -116,27 +116,27 @@ const createSession = (options: CreateSessionOptions = {}): Session => {
   }
 
   const setPower = (on: boolean): Promise<void> =>
-    withDevice((t, d) => t.sendCommand(d.id, powerCommand(on)))
+    withDevice((t, d) => t.sendCommand(deviceAddress(d), powerCommand(on)))
   const setSpeed = (speed: number): Promise<void> =>
-    withDevice((t, d) => t.sendCommand(d.id, speedCommand(speed)))
+    withDevice((t, d) => t.sendCommand(deviceAddress(d), speedCommand(speed)))
   const setMode = (mode: FanMode): Promise<void> =>
-    withDevice((t, d) => t.sendCommand(d.id, modeCommand(mode)))
+    withDevice((t, d) => t.sendCommand(deviceAddress(d), modeCommand(mode)))
   const setOscillation = (
     axis: "horizontal" | "vertical",
     on: number | boolean,
   ): Promise<void> =>
     withDevice((t, d) =>
       t.sendCommand(
-        d.id,
+        deviceAddress(d),
         axis === "horizontal"
           ? horizontalOscillationCommand(on)
-          : verticalOscillationCommand(Boolean(on)),
+          : verticalOscillationCommand(on),
       ),
     )
   const setNightMode = (on: boolean): Promise<void> =>
-    withDevice((t, d) => t.sendCommand(d.id, nightModeCommand(on)))
+    withDevice((t, d) => t.sendCommand(deviceAddress(d), nightModeCommand(on)))
   const setTimer = (hours: number): Promise<void> =>
-    withDevice((t, d) => t.sendCommand(d.id, timerCommand(hours)))
+    withDevice((t, d) => t.sendCommand(deviceAddress(d), timerCommand(hours)))
 
   const stop = (): void => {
     if (pollTimer) clearInterval(pollTimer)

@@ -36,4 +36,16 @@ const requireCurrentDevice = (): Device => {
   return device
 }
 
-export { getAccessToken, requireCurrentDevice }
+// Commands and status are addressed by MAC. A store written before that field
+// existed has no `mac`, so say what to do rather than sending a request that
+// would be refused with a misleading permissions error.
+const deviceAddress = (device: Device): string => {
+  if (!device.mac) {
+    throw new Error(
+      "This fan was saved before addresses were recorded. Run discovery again to update it.",
+    )
+  }
+  return device.mac
+}
+
+export { getAccessToken, requireCurrentDevice, deviceAddress }

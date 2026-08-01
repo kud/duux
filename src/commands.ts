@@ -11,10 +11,11 @@ type Command =
   | { param: "mode"; value: FanMode }
   // horosc is a four-position sweep-angle preset, not a toggle — confirmed
   // against the Home Assistant integrations built on this same protocol,
-  // which document "tune set horosc X (X: 0-3)". verosc has no equivalent
-  // confirmation and stays a toggle until one exists.
+  // which document "tune set horosc X (X: 0-3)" and "verosc X (X: 0-2)" —
+  // corroborated by a real state payload reporting both as plain integers.
+  // Neither is a toggle: horosc is off/30°/60°/90°, verosc off/45°/100°.
   | { param: "horosc"; value: number }
-  | { param: "verosc"; value: boolean }
+  | { param: "verosc"; value: number }
   | { param: "night"; value: boolean }
   | { param: "timer"; value: number }
 
@@ -47,7 +48,15 @@ const buildCommand = (command: Command): string => {
         )
       return `tune set horosc ${command.value}`
     case "verosc":
-      return `tune set verosc ${asBit(command.value)}`
+      if (
+        !Number.isInteger(command.value) ||
+        command.value < 0 ||
+        command.value > 2
+      )
+        throw new RangeError(
+          `vertical oscillation must be an integer between 0 (off) and 2, got ${command.value}`,
+        )
+      return `tune set verosc ${command.value}`
     case "night":
       return `tune set night ${asBit(command.value)}`
     case "timer":
@@ -72,8 +81,12 @@ const horizontalOscillationCommand = (level: number | boolean): string =>
     param: "horosc",
     value: typeof level === "boolean" ? (level ? 1 : 0) : level,
   })
-const verticalOscillationCommand = (on: boolean): string =>
-  buildCommand({ param: "verosc", value: on })
+// Accepts a boolean so existing callers keep working: true maps to preset 1.
+const verticalOscillationCommand = (level: number | boolean): string =>
+  buildCommand({
+    param: "verosc",
+    value: typeof level === "boolean" ? (level ? 1 : 0) : level,
+  })
 const nightModeCommand = (on: boolean): string =>
   buildCommand({ param: "night", value: on })
 const timerCommand = (hours: number): string =>

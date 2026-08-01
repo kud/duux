@@ -3,6 +3,7 @@ import type { Transport } from "./transport/index.js"
 import {
   getAccessToken,
   requireCurrentDevice,
+  deviceAddress,
 } from "./context.js"
 import {
   powerCommand,
@@ -25,7 +26,7 @@ const resolveTransport = (transport?: Transport): Transport =>
 // connection that reacts to state changes, use session.ts instead.
 const sendCommand = (command: string, transport?: Transport): Promise<void> => {
   const device = requireCurrentDevice()
-  return resolveTransport(transport).sendCommand(device.id, command)
+  return resolveTransport(transport).sendCommand(deviceAddress(device), command)
 }
 
 const setPower = (on: boolean, transport?: Transport): Promise<void> =>
@@ -45,7 +46,7 @@ const setOscillation = (
   sendCommand(
     axis === "horizontal"
       ? horizontalOscillationCommand(on)
-      : verticalOscillationCommand(Boolean(on)),
+      : verticalOscillationCommand(on),
     transport,
   )
 
@@ -57,7 +58,7 @@ const setTimer = (hours: number, transport?: Transport): Promise<void> =>
 
 const getStatus = (transport?: Transport): Promise<FanState> => {
   const device = requireCurrentDevice()
-  return resolveTransport(transport).getStatus(device.id)
+  return resolveTransport(transport).getStatus(deviceAddress(device))
 }
 
 export {

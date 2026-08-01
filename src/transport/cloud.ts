@@ -1,10 +1,10 @@
 import type { Transport } from "./index.js"
-import { unwrap } from "../discovery.js"
+import { unwrap, SENSORS_PATH } from "../discovery.js"
 import {
   toFanState,
   type ApiVersion,
   type FanState,
-  type RawFanData,
+  type SensorSummary,
 } from "../types.js"
 
 const V4_BASE_URL = "https://v4.api.cloudgarden.nl"
@@ -57,18 +57,16 @@ const createCloudTransport = (options: CloudTransportOptions): Transport => {
     return response
   }
 
-  const commandPath = (deviceId: number): string =>
+  // Addressed by MAC, not by the numeric sensor id. Posting to the id is
+  // refused with "Not_Allowed", which reads as a permissions problem and is in
+  // fact the wrong identifier.
+  const commandPath = (deviceId: string): string =>
     apiVersion === "v4"
       ? `/tenants/${requireTenantId()}/sensors/${deviceId}/command`
       : `/sensor/${deviceId}/commands`
 
-  const statusPath = (deviceId: number): string =>
-    apiVersion === "v4"
-      ? `/tenants/${requireTenantId()}/sensors/${deviceId}`
-      : `/data/${deviceId}/status`
-
   const sendCommand = async (
-    deviceId: number,
+    deviceId: string,
     command: string,
   ): Promise<void> => {
     const path = commandPath(deviceId)
@@ -82,15 +80,24 @@ const createCloudTransport = (options: CloudTransportOptions): Transport => {
     unwrap<unknown>(await response.json().catch(() => null), path)
   }
 
-  const getStatus = async (deviceId: number): Promise<FanState> => {
-    const path = statusPath(deviceId)
-    const response = await authorizedFetch(path)
-    const body = (await response.json()) as unknown
+  // There is no status endpoint. State is carried on the device list as
+  // latestData.fullData, so reading one fan means listing them and picking it
+  // out by MAC.
+  const getStatus = async (deviceId: string): Promise<FanState> => {
+    const response = await authorizedFetch(SENSORS_PATH)
+    const sensors = unwrap<SensorSummary[]>(await response.json(), SENSORS_PATH)
 
-    const raw =
-      apiVersion === "v4"
-        ? (body as { latestData: { fullData: RawFanData } }).latestData.fullData
-        : unwrap<RawFanData>(body, path)
+    const sensor = sensors.find((candidate) => candidate.deviceId === deviceId)
+    if (!sensor) {
+      throw new Error(`No Duux device found with address ${deviceId}`)
+    }
+
+    const raw = sensor.latestData?.fullData
+    if (!raw) {
+      throw new Error(
+        `Duux has no reported state for ${deviceId} yet. The fan may be offline.`,
+      )
+    }
 
     return toFanState(raw)
   }

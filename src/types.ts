@@ -1,32 +1,34 @@
 type FanMode = "normal" | "natural" | "night"
 
-// The device state as exposed by latestData.fullData (v4) / data (v5) — see
-// the API spec's "Discovery" section. mode/power are nullable because a
-// freshly provisioned or offline fan reports them as null.
+// The device state, from latestData.fullData on /smarthome/sensors. The field
+// names are the command names verbatim — horosc, verosc, night — not the
+// swing/tilt aliases this library used to invent for them. Everything is
+// nullable because the fan reports null for anything it doesn't have.
 type FanState = {
   mode: FanMode | null
   power: boolean | null
-  speed: number
-  // The sweep-angle preset, 0 (off) to 3 — reported as the raw number rather
-  // than flattened to a boolean, which discarded presets 2 and 3 entirely.
-  // Only the command range is confirmed; that the fan reports the same range
-  // back is inferred, and awaits a real state payload to verify.
-  swing: number
-  tilt: boolean
-  timer: number
+  speed: number | null
+  // Sweep-angle presets, confirmed against both the command grammar and a real
+  // state payload: horosc is 0 (off) / 1 (30°) / 2 (60°) / 3 (90°), and verosc
+  // is 0 (off) / 1 (45°) / 2 (100°). Neither is a boolean.
+  horosc: number | null
+  verosc: number | null
+  night: boolean | null
+  timer: number | null
   sensor: string
 }
 
-// The wire shape before mapping: power/swing/tilt as 0|1, mode as a small
-// int. Kept distinct from FanState so the int/bool conversion only happens
-// in one place (toFanState below).
+// The wire shape before mapping: power/night as 0|1, mode as a small int, the
+// oscillation fields already the preset number. Kept distinct from FanState so
+// the conversion happens in one place (toFanState below).
 type RawFanData = {
   mode: number | null
   power: number | null
-  speed: number
-  swing: number
-  tilt: number
-  timer: number
+  speed: number | null
+  horosc: number | null
+  verosc: number | null
+  night: number | null
+  timer: number | null
   sensor: string
 }
 
@@ -39,6 +41,10 @@ type SensorSummary = {
   type: string
   name: string
   displayName: string | null
+  // The MAC address. Commands are addressed by this, not by `id` — the numeric
+  // id only identifies the record, and posting to it is refused.
+  deviceId: string
+  latestData?: { fullData: RawFanData } | null
 }
 
 const sensorLabel = (sensor: SensorSummary): string =>
@@ -73,8 +79,9 @@ const toFanState = (raw: RawFanData): FanState => ({
   mode: raw.mode != null ? (FAN_MODE_BY_VALUE[raw.mode] ?? null) : null,
   power: raw.power != null ? raw.power === 1 : null,
   speed: raw.speed,
-  swing: raw.swing,
-  tilt: raw.tilt === 1,
+  horosc: raw.horosc,
+  verosc: raw.verosc,
+  night: raw.night != null ? raw.night === 1 : null,
   timer: raw.timer,
   sensor: raw.sensor,
 })

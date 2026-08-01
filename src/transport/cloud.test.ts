@@ -26,10 +26,10 @@ describe("createCloudTransport (v4)", () => {
       apiVersion: "v4",
     })
 
-    await transport.sendCommand(42, "tune set speed 10")
+    await transport.sendCommand("aa:bb:cc:dd:ee:ff", "tune set speed 10")
 
     expect(fetchMock).toHaveBeenCalledWith(
-      `${V4_BASE_URL}/tenants/77/sensors/42/command`,
+      `${V4_BASE_URL}/tenants/77/sensors/aa:bb:cc:dd:ee:ff/command`,
       expect.objectContaining({
         method: "POST",
         body: JSON.stringify({ command: "tune set speed 10" }),
@@ -47,43 +47,9 @@ describe("createCloudTransport (v4)", () => {
       apiVersion: "v4",
     })
 
-    await expect(transport.sendCommand(42, "tune set power 1")).rejects.toThrow(
+    await expect(transport.sendCommand("aa:bb:cc:dd:ee:ff", "tune set power 1")).rejects.toThrow(
       /tenantId is required/,
     )
-  })
-
-  it("maps latestData.fullData into a FanState on getStatus", async () => {
-    fetchMock.mockResolvedValue(
-      jsonResponse({
-        latestData: {
-          fullData: {
-            mode: 1,
-            power: 1,
-            speed: 12,
-            swing: 1,
-            tilt: 0,
-            timer: 0,
-            sensor: "AA:BB:CC:DD:EE:FF",
-          },
-        },
-      }),
-    )
-
-    const transport = createCloudTransport({
-      getAccessToken: () => "token-123",
-      tenantId: 77,
-      apiVersion: "v4",
-    })
-
-    await expect(transport.getStatus(42)).resolves.toEqual({
-      mode: "natural",
-      power: true,
-      speed: 12,
-      swing: 1,
-      tilt: false,
-      timer: 0,
-      sensor: "AA:BB:CC:DD:EE:FF",
-    })
   })
 
   it("throws a descriptive error on a non-ok response", async () => {
@@ -95,41 +61,58 @@ describe("createCloudTransport (v4)", () => {
       apiVersion: "v4",
     })
 
-    await expect(transport.sendCommand(42, "tune set power 1")).rejects.toThrow(
+    await expect(transport.sendCommand("aa:bb:cc:dd:ee:ff", "tune set power 1")).rejects.toThrow(
       /500/,
     )
   })
 })
 
 describe("createCloudTransport (v5)", () => {
-  it("posts to the sensor/{id}/commands path without needing a tenantId", async () => {
-    fetchMock.mockResolvedValue(jsonResponse({ response: { success: true } }))
+  const MAC = "28:05:a5:43:1f:c0"
+
+  it("addresses commands by MAC, not by the numeric sensor id", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({ data: "ok", errorMessage: null }),
+    )
 
     const transport = createCloudTransport({
       getAccessToken: () => "token-123",
       apiVersion: "v5",
     })
 
-    await transport.sendCommand(42, "tune set speed 10")
+    await transport.sendCommand(MAC, "tune set speed 10")
 
     expect(fetchMock).toHaveBeenCalledWith(
-      `${V5_BASE_URL}/sensor/42/commands`,
+      `${V5_BASE_URL}/sensor/${MAC}/commands`,
       expect.objectContaining({ method: "POST" }),
     )
   })
 
-  it("reads status from data/{id}/status, unwrapping the data envelope", async () => {
+  // There is no per-device status endpoint: state rides along on the device
+  // list as latestData.fullData, so reading one fan means listing them all.
+  it("reads state from the device list, matching on MAC", async () => {
     fetchMock.mockResolvedValue(
       jsonResponse({
-        data: {
-          mode: null,
-          power: null,
-          speed: 0,
-          swing: 0,
-          tilt: 0,
-          timer: 0,
-          sensor: "AA:BB:CC:DD:EE:FF",
-        },
+        data: [
+          { id: 1, deviceId: "aa:bb:cc:dd:ee:ff", latestData: null },
+          {
+            id: 373883,
+            deviceId: MAC,
+            latestData: {
+              fullData: {
+                mode: 1,
+                power: 0,
+                speed: 6,
+                horosc: 1,
+                verosc: 0,
+                night: 1,
+                timer: 0,
+                sensor: MAC,
+              },
+            },
+          },
+        ],
+        errorMessage: null,
       }),
     )
 
@@ -138,18 +121,19 @@ describe("createCloudTransport (v5)", () => {
       apiVersion: "v5",
     })
 
-    await expect(transport.getStatus(42)).resolves.toEqual({
-      mode: null,
-      power: null,
-      speed: 0,
-      swing: 0,
-      tilt: false,
+    await expect(transport.getStatus(MAC)).resolves.toEqual({
+      mode: "natural",
+      power: false,
+      speed: 6,
+      horosc: 1,
+      verosc: 0,
+      night: true,
       timer: 0,
-      sensor: "AA:BB:CC:DD:EE:FF",
+      sensor: MAC,
     })
 
     expect(fetchMock).toHaveBeenCalledWith(
-      `${V5_BASE_URL}/data/42/status`,
+      `${V5_BASE_URL}/smarthome/sensors`,
       expect.anything(),
     )
   })

@@ -3,7 +3,7 @@ import { discover, fetchCurrentUser, unwrap } from "./discovery.js"
 
 describe("unwrap", () => {
   it("returns a bare array untouched", () => {
-    const sensors = [{ id: 9, type: "58", name: "DUUX.1", displayName: null }]
+    const sensors = [{ id: 9, type: "58", name: "DUUX.1", displayName: null, deviceId: "aa:bb" }]
     expect(unwrap(sensors, "/sensor")).toEqual(sensors)
   })
 
@@ -44,12 +44,18 @@ describe("discover", () => {
       json: () => Promise.resolve(payload),
     })
 
-  it("lists sensors from v5 /sensor without resolving a tenant", async () => {
+  it("lists sensors from /smarthome/sensors without resolving a tenant", async () => {
     const sensors = [
-      { id: 373883, type: "58", name: "DUUX.1.356505", displayName: "Whisper" },
+      {
+        id: 373883,
+        type: "58",
+        name: "DUUX.1.356505",
+        displayName: "Whisper",
+        deviceId: "28:05:a5:43:1f:c0",
+      },
     ]
     fetchMock.mockImplementation((url: string) => {
-      if (url === "https://v5.api.cloudgarden.nl/sensor") return ok(sensors)
+      if (url === "https://v5.api.cloudgarden.nl/smarthome/sensors") return ok(sensors)
       throw new Error(`unexpected fetch: ${url}`)
     })
 

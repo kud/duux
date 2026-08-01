@@ -13,6 +13,10 @@ type Device = {
   id: number
   type: string
   displayName: string
+  // The MAC address, which is what commands are addressed by — the numeric id
+  // identifies the record only. Optional so a store written before this field
+  // existed still loads; re-run discovery to populate it.
+  mac?: string
 }
 
 // Non-secret auth metadata. The access/refresh tokens themselves live in the

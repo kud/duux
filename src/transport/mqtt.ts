@@ -60,7 +60,7 @@ type MqttTransportOptions = {
 }
 
 const topic = (
-  deviceId: number,
+  deviceId: string,
   suffix: "in" | "online" | "update" | "command",
 ): string => `sensor/${deviceId}/${suffix}`
 
@@ -87,14 +87,14 @@ const createMqttTransport = (options: MqttTransportOptions = {}): Transport => {
 
   const subscribedTopics = new Set<string>()
 
-  const ensureSubscribed = (deviceId: number): void => {
+  const ensureSubscribed = (deviceId: string): void => {
     const stateTopic = topic(deviceId, "in")
     if (subscribedTopics.has(stateTopic)) return
     subscribedTopics.add(stateTopic)
     client.subscribe(stateTopic)
   }
 
-  const sendCommand = (deviceId: number, command: string): Promise<void> =>
+  const sendCommand = (deviceId: string, command: string): Promise<void> =>
     new Promise((resolve, reject) => {
       client.publish(topic(deviceId, "command"), command, (error) => {
         if (error) reject(error)
@@ -105,7 +105,7 @@ const createMqttTransport = (options: MqttTransportOptions = {}): Transport => {
   // The device publishes state on sensor/{id}/in rather than answering a
   // request/response call, so a one-shot getStatus waits for the next
   // publish — there is no pull endpoint on this transport.
-  const getStatus = (deviceId: number): Promise<FanState> =>
+  const getStatus = (deviceId: string): Promise<FanState> =>
     new Promise((resolve, reject) => {
       const stateTopic = topic(deviceId, "in")
 
@@ -124,7 +124,7 @@ const createMqttTransport = (options: MqttTransportOptions = {}): Transport => {
     })
 
   const subscribe = (
-    deviceId: number,
+    deviceId: string,
     onUpdate: (state: FanState) => void,
   ): (() => void) => {
     const stateTopic = topic(deviceId, "in")

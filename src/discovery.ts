@@ -68,8 +68,14 @@ const v5Get = async <T>(accessToken: string, path: string): Promise<T> => {
 const fetchCurrentUser = (accessToken: string): Promise<CurrentUser> =>
   v5Get<CurrentUser>(accessToken, "/users/current")
 
+// /smarthome/sensors rather than /sensor: both list the account's devices, but
+// only this one carries latestData.fullData, which is where the fan's live
+// state actually lives. There is no separate status endpoint — /data/{id}/status
+// is refused for every account tested.
+const SENSORS_PATH = "/smarthome/sensors"
+
 const fetchSensors = (accessToken: string): Promise<SensorSummary[]> =>
-  v5Get<SensorSummary[]>(accessToken, "/sensor")
+  v5Get<SensorSummary[]>(accessToken, SENSORS_PATH)
 
 // Lists the fans on the account. Pure — it does not touch config.ts.
 // Persisting the result (upsertDevice) is left to the caller, the same split
@@ -78,5 +84,12 @@ const discover = async (accessToken: string): Promise<Discovered> => ({
   devices: await fetchSensors(accessToken),
 })
 
-export { discover, fetchCurrentUser, fetchSensors, unwrap, V5_BASE_URL }
+export {
+  discover,
+  fetchCurrentUser,
+  fetchSensors,
+  unwrap,
+  V5_BASE_URL,
+  SENSORS_PATH,
+}
 export type { Discovered, CurrentUser, TenantPermission }
