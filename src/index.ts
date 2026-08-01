@@ -58,6 +58,7 @@ export {
   discover,
   fetchCurrentUser,
   fetchSensors,
+  renameSensor,
   unwrap,
 } from "./discovery.js"
 export type { Discovered, CurrentUser, TenantPermission } from "./discovery.js"

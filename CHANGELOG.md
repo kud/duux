@@ -4,6 +4,14 @@ All notable changes to this project are documented here.
 
 ---
 
+## 0.7.0 — 2026-08-01
+
+### Highlights
+
+- **New `renameSensor()`** — renames a fan on Duux's side, so the change shows in the app too. It is a `PATCH v5/sensor/{id}` setting `displayName`, addressed by the **numeric sensor id** rather than the MAC: the id identifies the record, the MAC identifies the hardware, so metadata edits and commands go to different places.
+
+---
+
 ## 0.6.0 — 2026-08-01
 
 ### Highlights

@@ -77,6 +77,32 @@ const SENSORS_PATH = "/smarthome/sensors"
 const fetchSensors = (accessToken: string): Promise<SensorSummary[]> =>
   v5Get<SensorSummary[]>(accessToken, SENSORS_PATH)
 
+// Addressed by the numeric sensor id, not the MAC — the id identifies the
+// record and the MAC identifies the hardware, so metadata edits and commands
+// go to different places. Setting displayName is what the Duux app's rename
+// does, and it is what `sensorLabel` prefers.
+const renameSensor = async (
+  accessToken: string,
+  sensorId: number,
+  displayName: string,
+): Promise<SensorSummary> => {
+  const path = `/sensor/${sensorId}`
+  const response = await fetch(`${V5_BASE_URL}${path}`, {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ displayName }),
+  })
+  if (!response.ok) {
+    throw new Error(
+      `Duux API request to ${path} failed: ${response.status} ${response.statusText}`,
+    )
+  }
+  return unwrap<SensorSummary>(await response.json(), path)
+}
+
 // Lists the fans on the account. Pure — it does not touch config.ts.
 // Persisting the result (upsertDevice) is left to the caller, the same split
 // gtv draws between its (pure) discovery.ts and its (persisting) pairing.ts.
@@ -88,6 +114,7 @@ export {
   discover,
   fetchCurrentUser,
   fetchSensors,
+  renameSensor,
   unwrap,
   V5_BASE_URL,
   SENSORS_PATH,
