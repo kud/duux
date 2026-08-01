@@ -4,6 +4,14 @@ All notable changes to this project are documented here.
 
 ---
 
+## 0.6.0 — 2026-08-01
+
+### Highlights
+
+- **Battery reporting.** The Whisper Flex 2 takes an optional battery pack and reports its level and charging state; the library ignored both. `FanState.battery` is `{ level, charging }` when a pack is fitted and `null` otherwise — deliberately not `0%`, since a fan without a pack reports zero and that is not the same as an empty battery.
+
+---
+
 ## 0.5.0 — 2026-08-01
 
 ### Breaking changes

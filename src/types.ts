@@ -19,6 +19,10 @@ type FanState = {
   night: boolean | null
   // Child lock, the app's "Child lock" toggle.
   lock: boolean | null
+  // Only present when the optional battery pack is fitted; the fan reports
+  // 0/0 without one, which is indistinguishable from an empty pack, so this
+  // is null unless a level is actually reported.
+  battery: { level: number; charging: boolean } | null
   timer: number | null
   sensor: string
 }
@@ -34,6 +38,8 @@ type RawFanData = {
   verosc: number | null
   night: number | null
   lock: number | null
+  batlvl: number | null
+  batcha: number | null
   timer: number | null
   sensor: string
 }
@@ -87,6 +93,10 @@ const toFanState = (raw: RawFanData): FanState => ({
   verosc: raw.verosc,
   night: raw.night != null ? raw.night === 1 : null,
   lock: raw.lock != null ? raw.lock === 1 : null,
+  battery:
+    raw.batlvl != null && raw.batlvl > 0
+      ? { level: raw.batlvl, charging: raw.batcha === 1 }
+      : null,
   timer: raw.timer,
   sensor: raw.sensor,
 })
