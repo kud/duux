@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="duux-cli">
+  <title>duux-cli</title>
+  <g fill="none" stroke="#14A8BD" stroke-width="11" stroke-linecap="round">
+    <circle cx="50" cy="50" r="7" fill="#14A8BD" stroke="none"/>
+    <path d="M 44.3 17.5 A 33 33 0 0 0 81 38.7"/>
+    <path d="M 24.7 71.2 A 33 33 0 0 0 24.7 28.8"/>
+    <path d="M 81 61.3 A 33 33 0 0 0 44.3 82.5"/>
+  </g>
+</svg>
